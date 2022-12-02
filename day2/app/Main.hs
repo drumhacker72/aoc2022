@@ -35,61 +35,45 @@ strategy = sepEndBy1 oneRound eol
 data Shape = Rock | Paper | Scissors
     deriving (Enum, Eq, Show)
 
+strength, weakness :: Shape -> Shape
+strength Rock = Scissors
+strength s = pred s
+weakness Scissors = Rock
+weakness s = succ s
+
 data Outcome = Loss | Draw | Win
     deriving (Enum, Show)
 
 against :: Shape -> Shape -> Outcome
-Rock `against` Scissors = Win
-Scissors `against` Paper = Win
-Paper `against` Rock = Win
 a `against` b
     | a == b = Draw
+    | strength a == b = Win
     | otherwise = Loss
 
 shapeScore :: Shape -> Int
-shapeScore Rock = 1
-shapeScore Paper = 2
-shapeScore Scissors = 3
+shapeScore = (+ 1) . fromEnum
 
 outcomeScore :: Outcome -> Int
-outcomeScore Loss = 0
-outcomeScore Draw = 3
-outcomeScore Win = 6
+outcomeScore = (* 3) . fromEnum
 
 roundScore1 :: Round -> Int
 roundScore1 (c1, c2) = shapeScore myShape + outcomeScore outcome
   where
-    theirShape = case c1 of
-        A -> Rock
-        B -> Paper
-        C -> Scissors
-    myShape = case c2 of
-        X -> Rock
-        Y -> Paper
-        Z -> Scissors
+    theirShape = toEnum $ fromEnum c1
+    myShape = toEnum $ fromEnum c2
     outcome = myShape `against` theirShape
 
-pickShape :: Shape -> Outcome -> Shape
-pickShape s Draw = s
-pickShape Rock Loss = Scissors
-pickShape Rock Win = Paper
-pickShape Paper Loss = Rock
-pickShape Paper Win = Scissors
-pickShape Scissors Loss = Paper
-pickShape Scissors Win = Rock
+pickShape :: Outcome -> Shape -> Shape
+pickShape Draw = id
+pickShape Loss = strength
+pickShape Win = weakness
 
 roundScore2 :: Round -> Int
 roundScore2 (c1, c2) = shapeScore myShape + outcomeScore outcome
   where
-    theirShape = case c1 of
-        A -> Rock
-        B -> Paper
-        C -> Scissors
-    outcome = case c2 of
-        X -> Loss
-        Y -> Draw
-        Z -> Win
-    myShape = pickShape theirShape outcome
+    theirShape = toEnum $ fromEnum c1
+    outcome = toEnum $ fromEnum c2
+    myShape = pickShape outcome theirShape
 
 main :: IO ()
 main = do
