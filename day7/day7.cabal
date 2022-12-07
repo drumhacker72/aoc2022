@@ -1,5 +1,5 @@
 cabal-version:   3.4
-name:            day6
+name:            day7
 version:         0.1.0.0
 license:         BlueOak-1.0.0
 license-file:    LICENSE
@@ -10,11 +10,15 @@ build-type:      Simple
 common warnings
   ghc-options: -Wall
 
-executable day6
+executable day7
   import:           warnings
   main-is:          Main.hs
   build-depends:
     , base        ^>=4.17.0.0
+    , bytestring  ^>=0.11.3.1
+    , containers  ^>=0.6.6
+    , megaparsec  ^>=9.3.0
+    , text        ^>=2.0.1
 
   hs-source-dirs:   app
   default-language: GHC2021
