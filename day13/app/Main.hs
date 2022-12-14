@@ -16,7 +16,7 @@ instance Ord Value where
     compare (ListValue []) (ListValue _) = LT
     compare (ListValue _) (ListValue []) = GT
     compare (ListValue (a:as)) (ListValue (b:bs)) = case compare a b of
-        EQ -> compare as bs
+        EQ -> compare (ListValue as) (ListValue bs)
         r -> r
     compare a@(IntValue _) bs@(ListValue _) = compare (ListValue [a]) bs
     compare as@(ListValue _) b@(IntValue _) = compare as (ListValue [b])
