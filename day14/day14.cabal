@@ -14,8 +14,8 @@ executable day14
   import:           warnings
   main-is:          Main.hs
   build-depends:
-    , array       ^>=0.5.4.0
     , base        ^>=4.17.0.0
+    , containers  ^>=0.6.6
     , megaparsec  ^>=9.3.0
 
   hs-source-dirs:   app

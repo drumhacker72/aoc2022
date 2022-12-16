@@ -1,11 +1,11 @@
-import Control.Monad (forM_)
-import Control.Monad.ST (ST, runST)
-import Data.Array.ST (STUArray, getBounds, newArray, readArray, writeArray)
 import Data.Functor (void)
+import Data.List (foldl')
+import Data.Set (Set)
 import Data.Void (Void)
 import Text.Megaparsec (Parsec, parseMaybe, sepBy1, sepEndBy1)
 import Text.Megaparsec.Char (char, eol, string)
 
+import qualified Data.Set as S
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void String
@@ -37,43 +37,36 @@ unrollPath [] = error "unexpected: empty path"
 unrollPath [p] = [p]
 unrollPath (p1:p2:rest) = unrollSegment p1 p2 ++ unrollPath (p2:rest)
 
-mkGrid :: ((Int, Int), (Int, Int)) -> ST s (STUArray s (Int, Int) Bool)
-mkGrid = (`newArray` False)
+data Grid = Grid
+    { _blocks :: Set (Int, Int)
+    , _bottom :: Int
+    }
 
-pour :: STUArray s (Int, Int) Bool -> (Int, Int) -> ST s Bool
-pour grid (x, y) = do
-    (_, (_, bottom)) <- getBounds grid
+pour :: Grid -> (Int, Int) -> Maybe Grid
+pour grid@(Grid blocks bottom) (x, y) =
     if y >= bottom
-        then return False
-        else do
-            down <- readArray grid (x, y+1)
-            downLeft <- readArray grid (x-1, y+1)
-            downRight <- readArray grid (x+1, y+1)
-            case (down, downLeft, downRight) of
-                (False, _, _) -> pour grid (x, y+1)
-                (True, False, _) -> pour grid (x-1, y+1)
-                (True, True, False) -> pour grid (x+1, y+1)
-                (True, True, True) -> do
-                    writeArray grid (x, y) True
-                    return True                
+    then Nothing
+    else
+        let down = S.member (x, y+1) blocks
+            downLeft = S.member (x-1, y+1) blocks
+            downRight = S.member (x+1, y+1) blocks
+         in case (down, downLeft, downRight) of
+            (False, _, _) -> pour grid (x, y+1)
+            (True, False, _) -> pour grid (x-1, y+1)
+            (True, True, False) -> pour grid (x+1, y+1)
+            (True, True, True) -> Just $ Grid (S.insert (x, y) blocks) bottom
 
-numPours :: STUArray s (Int, Int) Bool -> Int -> ST s Int
-numPours grid n = do
-    settled <- pour grid (500, 0)
-    if settled
-        then numPours grid (n+1)
-        else return n
+numPours :: Grid -> Int -> Int
+numPours grid n =
+    case pour grid (500, 0) of
+        Nothing -> n
+        Just grid' -> numPours grid' (n+1)
 
 main :: IO ()
 main = do
     contents <- readFile "day14.txt"
     let paths = maybe (error "bad input") id $ parseMaybe pInput contents
         points = concatMap unrollPath paths
-        left = (minimum $ 500 : map fst points) - 2
-        right = (maximum $ 500 : map fst points) + 2
-        top = minimum $ 0 : map snd points
         bottom = maximum $ 0 : map snd points
-    print $ runST $ do
-        grid <- mkGrid ((left, top), (right, bottom))
-        forM_ points $ \point -> writeArray grid point True
-        numPours grid 0
+        blocks = foldl' (flip S.insert) S.empty points
+    print $ numPours (Grid blocks bottom) 0
