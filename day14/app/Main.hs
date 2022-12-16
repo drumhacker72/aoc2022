@@ -37,30 +37,43 @@ unrollPath [] = error "unexpected: empty path"
 unrollPath [p] = [p]
 unrollPath (p1:p2:rest) = unrollSegment p1 p2 ++ unrollPath (p2:rest)
 
-data Grid = Grid
-    { _blocks :: Set (Int, Int)
-    , _bottom :: Int
-    }
-
-pour :: Grid -> (Int, Int) -> Maybe Grid
-pour grid@(Grid blocks bottom) (x, y) =
-    if y >= bottom
-    then Nothing
-    else
+pour :: Set (Int, Int) -> Int -> (Int, Int) -> Maybe (Int, Int)
+pour blocks bottom (x, y)
+    | y >= bottom = Nothing
+    | otherwise =
         let down = S.member (x, y+1) blocks
             downLeft = S.member (x-1, y+1) blocks
             downRight = S.member (x+1, y+1) blocks
          in case (down, downLeft, downRight) of
-            (False, _, _) -> pour grid (x, y+1)
-            (True, False, _) -> pour grid (x-1, y+1)
-            (True, True, False) -> pour grid (x+1, y+1)
-            (True, True, True) -> Just $ Grid (S.insert (x, y) blocks) bottom
+            (False, _, _) -> pour blocks bottom (x, y+1)
+            (True, False, _) -> pour blocks bottom (x-1, y+1)
+            (True, True, False) -> pour blocks bottom (x+1, y+1)
+            (True, True, True) -> Just (x, y)
 
-numPours :: Grid -> Int -> Int
-numPours grid n =
-    case pour grid (500, 0) of
+numPours :: Set (Int, Int) -> Int -> Int -> Int
+numPours blocks bottom n =
+    case pour blocks bottom (500, 0) of
         Nothing -> n
-        Just grid' -> numPours grid' (n+1)
+        Just p -> numPours (S.insert p blocks) bottom (n+1)
+
+pour2 :: Set (Int, Int) -> Int -> (Int, Int) -> (Int, Int)
+pour2 blocks floor_ (x, y)
+    | y+1 == floor_ = (x, y)
+    | otherwise =
+        let down = S.member (x, y+1) blocks
+            downLeft = S.member (x-1, y+1) blocks
+            downRight = S.member (x+1, y+1) blocks
+            in case (down, downLeft, downRight) of
+            (False, _, _) -> pour2 blocks floor_ (x, y+1)
+            (True, False, _) -> pour2 blocks floor_ (x-1, y+1)
+            (True, True, False) -> pour2 blocks floor_ (x+1, y+1)
+            (True, True, True) -> (x, y)
+
+numPours2 :: Set (Int, Int) -> Int -> Int -> Int
+numPours2 blocks floor_ n =
+    case pour2 blocks floor_ (500, 0) of
+        (500, 0) -> n
+        p -> numPours2 (S.insert p blocks) floor_ (n+1)
 
 main :: IO ()
 main = do
@@ -69,4 +82,5 @@ main = do
         points = concatMap unrollPath paths
         bottom = maximum $ 0 : map snd points
         blocks = foldl' (flip S.insert) S.empty points
-    print $ numPours (Grid blocks bottom) 0
+    print $ numPours blocks bottom 0
+    print $ numPours2 blocks (bottom + 2) 1
