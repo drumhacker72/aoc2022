@@ -31,30 +31,40 @@ pRoom = do
            <|> (string "; tunnel leads to valve " *> pValve <&> (:[]))
     pure (name, (rate, tunnels))
 
-simulate :: Int -> Map Text (Int, [Text]) -> Map Text [(Set Text, Int)] -> Int
+type Layout = Map Text (Int, [Text])
+
+openRate :: Layout -> Set Text -> Int
+openRate rooms open = sum (fst . (rooms M.!) <$> S.elems open)
+
+simulate :: Int -> Layout -> Map Text [(Set Text, Int)] -> Int
 simulate 30 _ states = maximum $ concatMap (map snd) $ M.elems states
-simulate time rooms states = simulate (time+1) rooms $ foldl' f M.empty (M.assocs states)
+simulate time rooms states = simulate (time+1) rooms $ foldl' processRoom M.empty (M.assocs states)
   where
-    f :: Map Text [(Set Text, Int)] -> (Text, [(Set Text, Int)]) -> Map Text [(Set Text, Int)]
-    f acc (room, ops) =
-        let accv = foldl' (h room) acc ops
-         in foldl' (g ops) accv $ snd $ rooms M.! room
-    h room acc' (open, pressure) =
-        let pressure' = pressure + sum (fst . (rooms M.!) <$> S.elems open)
+    processRoom :: Map Text [(Set Text, Int)] -> (Text, [(Set Text, Int)]) -> Map Text [(Set Text, Int)]
+    processRoom acc (room, ops) =
+        let acc' = foldl' (tryOpeningValve room) acc ops
+         in foldl' (tryAllMoves ops) acc' $ snd $ rooms M.! room
+
+    tryOpeningValve :: Text -> Map Text [(Set Text, Int)] -> (Set Text, Int) -> Map Text [(Set Text, Int)]
+    tryOpeningValve room acc' (open, pressure) =
+        let pressure' = pressure + openRate rooms open
             rate = fst $ rooms M.! room
             in if rate == 0 || room `S.member` open then acc' else try room (S.insert room open) pressure' acc'
+
     try :: Text -> Set Text -> Int -> Map Text [(Set Text, Int)] -> Map Text [(Set Text, Int)]
     try r o' p' acc' = case M.lookup r acc' of
         Nothing -> M.insert r [(o', p')] acc'
         Just oldops ->
-            -- TODO: instead of subsets, compare combined rate of all open valves?
-            let ops' = filter (\(o, p) -> p > p' || not (o `S.isSubsetOf` o')) oldops
-                ops'' = if any (\(o, p) -> p > p' && o' `S.isSubsetOf` o) oldops then oldops else (o', p') : ops'
+            let ops' = filter (\(o, p) -> p > p' || openRate rooms o > openRate rooms o') oldops
+                ops'' = if any (\(o, p) -> p > p' && openRate rooms o > openRate rooms o') oldops then oldops else (o', p') : ops'
                 in M.insert r ops'' acc'
-    g :: [(Set Text, Int)] -> Map Text [(Set Text, Int)] -> Text -> Map Text [(Set Text, Int)]
-    g ops acc' r' = foldl' (j r') acc' ops
-    j r' acc' (open, pressure) =
-        let pressure' = pressure + sum (fst . (rooms M.!) <$> S.elems open)
+
+    tryAllMoves :: [(Set Text, Int)] -> Map Text [(Set Text, Int)] -> Text -> Map Text [(Set Text, Int)]
+    tryAllMoves ops acc' r' = foldl' (tryMove r') acc' ops
+
+    tryMove :: Text -> Map Text [(Set Text, Int)] -> (Set Text, Int) -> Map Text [(Set Text, Int)]
+    tryMove r' acc' (open, pressure) =
+        let pressure' = pressure + openRate rooms open
             in try r' open pressure' acc'
 
 main :: IO ()
