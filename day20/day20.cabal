@@ -1,0 +1,21 @@
+cabal-version:   3.4
+name:            day20
+version:         0.1.0.0
+license:         BlueOak-1.0.0
+license-file:    LICENSE
+author:          J. Nelson
+maintainer:      drumhacker72@gmail.com
+build-type:      Simple
+
+common warnings
+  ghc-options: -Wall
+
+executable day20
+  import:           warnings
+  main-is:          Main.hs
+  build-depends:
+    , base        ^>=4.17.0.0
+    , containers  ^>=0.6.6
+
+  hs-source-dirs:   app
+  default-language: GHC2021
