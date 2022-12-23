@@ -1,0 +1,22 @@
+cabal-version:   3.4
+name:            day22
+version:         0.1.0.0
+license:         BlueOak-1.0.0
+license-file:    LICENSE
+author:          J. Nelson
+maintainer:      drumhacker72@gmail.com
+build-type:      Simple
+
+common warnings
+  ghc-options: -Wall
+
+executable day22
+  import:           warnings
+  main-is:          Main.hs
+  build-depends:
+    , array       ^>=0.5.4.0
+    , base        ^>=4.17.0.0
+    , megaparsec  ^>=9.3.0
+
+  hs-source-dirs:   app
+  default-language: GHC2021
