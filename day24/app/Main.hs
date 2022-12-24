@@ -58,10 +58,10 @@ step (maxX, maxY) ((x, y), d) = (p', d)
 
 moves :: (Int, Int) -> (Int, Int) -> [(Int, Int)]
 moves (maxX, maxY) (x, y) = (x, y) : concat
-    [ if x == 1 || y == 0 then [] else [(x-1, y)]
-    , if x == maxX || y == 0 then [] else [(x+1, y)]
+    [ if x == 1 || (y == 0 || y == maxY+1) then [] else [(x-1, y)]
+    , if x == maxX || (y == 0 || y == maxY+1) then [] else [(x+1, y)]
     , if y <= 1 then [] else [(x, y-1)]
-    , if y == maxY then [] else [(x, y+1)]
+    , if y >= maxY then [] else [(x, y+1)]
     ]
 
 manhattan :: (Int, Int) -> (Int, Int) -> Int
@@ -72,12 +72,12 @@ data Key = Key Int Int
 instance Ord Key where
     Key n1 d1 `compare` Key n2 d2 = (n1+d1) `compare` (n2+d2)
 
-loop :: (Int -> (Int, Int) -> Bool) -> Int -> (Int, Int) -> Set (Int, (Int, Int)) -> MinPQueue Key (Int, Int) -> Int
-loop isFree exit bounds@(_, maxY) seen pq
-    | p == (exit, maxY) = t+1
+loop :: (Int -> (Int, Int) -> Bool) -> (Int, Int) -> (Int, Int) -> Set (Int, (Int, Int)) -> MinPQueue Key (Int, Int) -> Int
+loop isFree exit bounds seen pq
+    | p == exit = t+1
     | (t, p) `S.member` seen = loop isFree exit bounds seen pq'
     | otherwise = loop isFree exit bounds seen'
-        $ foldl' (\acc p' -> PQ.insert (Key (t+1) $ manhattan p' (exit, maxY+1)) p' acc) pq' ps'
+        $ foldl' (\acc p' -> PQ.insert (Key (t+1) $ 1 + manhattan p' exit) p' acc) pq' ps'
   where
     ((Key t _d, p), pq') = PQ.deleteFindMin pq
     ps' = filter (isFree (t+1)) $ moves bounds p
@@ -86,10 +86,14 @@ loop isFree exit bounds@(_, maxY) seen pq
 main :: IO ()
 main = do
     contents <- readFile "day24.txt"
-    let (entrance, bounds, blizzards, exit) = maybe (error "bad input") id $ parseMaybe pInput contents
+    let (entrance, bounds@(_, maxY), blizzards, exit) = maybe (error "bad input") id $ parseMaybe pInput contents
         bsOverTime = iterate (map (step bounds)) blizzards
         occupiedOverTime :: [Set (Int, Int)]
         occupiedOverTime = map (S.fromList . map fst) bsOverTime
         isFree :: Int -> (Int, Int) -> Bool
         isFree t p = p `S.notMember` (occupiedOverTime !! t)
-    print $ loop isFree exit bounds S.empty $ PQ.singleton (Key 0 999) (entrance, 0)
+    let t1 = loop isFree (exit, maxY) bounds S.empty $ PQ.singleton (Key 0 999) (entrance, 0)
+    print t1
+    let t2 = loop isFree (entrance, 1) bounds S.empty $ PQ.singleton (Key t1 999) (exit, maxY+1)
+        t3 = loop isFree (exit, maxY) bounds S.empty $ PQ.singleton (Key t2 999) (entrance, 0)
+    print t3
